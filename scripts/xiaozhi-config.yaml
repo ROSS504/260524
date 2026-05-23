@@ -1,0 +1,49 @@
+server:
+  ip: 0.0.0.0
+  port: 8000
+  http_port: 8003
+  websocket: ws://192.168.1.30:8000/xiaozhi/v1/
+
+selected_module:
+  VAD: SileroVAD
+  ASR: SherpaASR
+  LLM: ClaudeCodeLLM
+  VLLM: ChatGLMVLLM
+  TTS: EdgeTTS
+  Memory: nomem
+  Intent: function_call
+
+Intent:
+  function_call:
+    type: function_call
+    functions:
+      - change_role
+      - web_search
+      - get_weather
+      - get_news_from_newsnow
+      - play_music
+      - find_person
+
+LLM:
+  ClaudeCodeLLM:
+    type: openai
+    base_url: https://ai.sendercloud.net/v1
+    model_name: gemini-3.5-flash
+    api_key: sk-mVbD13MaYslbuS5DNUhKjbdjG18obbBKe341k9ynAjYRtmQt
+
+TTS:
+  EdgeTTS:
+    type: edge
+    voice: zh-CN-XiaoxiaoNeural
+    output_dir: tmp/
+
+end_prompt:
+  enable: false
+
+close_connection_no_voice_time: 600
+
+prompt: |
+  你是一个智能语音助手，名叫小智。你的大脑由 Gemini（Google 出品）驱动。
+  请用简洁、自然、口语化的中文回答问题。
+  回答要简短，适合语音播放，一般不超过3句话。
+  不要使用 markdown 格式、代码块或特殊符号。
