@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据处理规则 - Farm Order Hub</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f0f2f5; color: #333; }
+
+        .header {
+            background: linear-gradient(135deg, #2d5016, #4a8c1c);
+            color: white; padding: 20px 40px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h1 { font-size: 22px; font-weight: 600; }
+        .header a { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 14px; }
+        .header a:hover { color: white; }
+
+        .container { max-width: 900px; margin: 24px auto; padding: 0 20px; }
+
+        .flash { padding: 12px 18px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+        .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        .card {
+            background: white; border-radius: 12px; padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;
+        }
+        .card h2 { font-size: 16px; margin-bottom: 16px; color: #1a1a1a; }
+
+        .rule-input {
+            width: 100%; padding: 14px 16px; border: 2px solid #e0e0e0;
+            border-radius: 10px; font-size: 15px; resize: vertical; min-height: 80px;
+            font-family: inherit; transition: border-color 0.2s;
+        }
+        .rule-input:focus { outline: none; border-color: #4a8c1c; }
+        .rule-input::placeholder { color: #aaa; }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 10px 20px; border-radius: 8px; font-size: 14px;
+            text-decoration: none; border: none; cursor: pointer; font-weight: 500;
+            transition: all 0.15s;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+        .btn-primary { background: #4a8c1c; color: white; }
+        .btn-sm { padding: 6px 14px; font-size: 13px; }
+        .btn-toggle { background: #f5f5f5; color: #333; border: 1px solid #ddd; }
+        .btn-danger { background: #fff; color: #c62828; border: 1px solid #e0e0e0; }
+        .btn-danger:hover { background: #fce4ec; }
+
+        .rule-list { list-style: none; }
+        .rule-item {
+            display: flex; align-items: flex-start; gap: 14px;
+            padding: 16px 0; border-bottom: 1px solid #f0f0f0;
+        }
+        .rule-item:last-child { border-bottom: none; }
+
+        .rule-number {
+            flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+            background: #e8f5e9; color: #2e7d32; font-size: 13px; font-weight: 600;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .rule-item.disabled .rule-number { background: #f5f5f5; color: #999; }
+
+        .rule-content { flex: 1; }
+        .rule-text { font-size: 15px; line-height: 1.6; white-space: pre-wrap; }
+        .rule-item.disabled .rule-text { color: #999; text-decoration: line-through; }
+        .rule-meta { font-size: 12px; color: #999; margin-top: 4px; }
+
+        .rule-actions { flex-shrink: 0; display: flex; gap: 6px; }
+
+        .hint {
+            background: #f9f9f9; border-radius: 8px; padding: 14px 18px;
+            font-size: 13px; color: #666; line-height: 1.8; margin-top: 14px;
+        }
+        .hint strong { color: #333; }
+
+        .api-section { font-size: 13px; color: #555; }
+        .api-section code {
+            background: #f5f5f5; padding: 2px 8px; border-radius: 4px;
+            font-family: "SF Mono", Monaco, monospace; font-size: 12px;
+        }
+        .api-item { margin-bottom: 8px; }
+
+        .empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>数据处理规则</h1>
+        <a href="/">&larr; 返回首页</a>
+    </div>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endwith %}
+
+        <!-- 添加规则 -->
+        <div class="card">
+            <h2>添加规则</h2>
+            <form action="/rules/add" method="post">
+                <textarea class="rule-input" name="content" placeholder="用自然语言描述你的数据处理规则，例如：&#10;&#10;当收到「取消订单」事件时，如果订单状态已经是「已发货」，则忽略取消请求，保持原状态不变。"></textarea>
+                <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <button type="submit" class="btn btn-primary">添加规则</button>
+                </div>
+            </form>
+            <div class="hint">
+                <strong>写法提示：</strong>用日常中文描述即可，比如：<br>
+                - 新增订单时，自动把状态设为「正常」<br>
+                - 中断订单恢复时，只有状态是「中断」的才能恢复，否则跳过<br>
+                - 取消的订单不出现在发货单里<br>
+                - 同一个订单如果先取消再新增，以最后一条为准
+            </div>
+        </div>
+
+        <!-- 规则列表 -->
+        <div class="card">
+            <h2>已有规则（{{ rules | length }} 条）</h2>
+            {% if rules %}
+            <ul class="rule-list">
+                {% for rule in rules %}
+                <li class="rule-item {% if not rule.enabled %}disabled{% endif %}">
+                    <div class="rule-number">{{ loop.index }}</div>
+                    <div class="rule-content">
+                        <div class="rule-text">{{ rule.content }}</div>
+                        <div class="rule-meta">
+                            #{{ rule.rule_id }} &middot;
+                            {{ rule.created_at.strftime('%Y-%m-%d %H:%M') }} &middot;
+                            {% if rule.enabled %}已启用{% else %}已禁用{% endif %}
+                        </div>
+                    </div>
+                    <div class="rule-actions">
+                        <form action="/rules/toggle/{{ rule.rule_id }}" method="post" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-toggle">
+                                {% if rule.enabled %}禁用{% else %}启用{% endif %}
+                            </button>
+                        </form>
+                        <form action="/rules/delete/{{ rule.rule_id }}" method="post" style="display:inline;"
+                              onsubmit="return confirm('确定删除这条规则？')">
+                            <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                        </form>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty">还没有规则，在上方输入框添加</div>
+            {% endif %}
+        </div>
+
+        <!-- API 说明 -->
+        <div class="card">
+            <h2>Claude Code 接口</h2>
+            <div class="api-section">
+                <div class="api-item"><code>GET /api/rules</code> — 获取所有启用的规则（自然语言）</div>
+                <div class="api-item"><code>GET /api/current-batch</code> — 获取当前批次 ID</div>
+                <div class="api-item"><code>GET /api/batch/{id}/events</code> — 获取待处理事件</div>
+                <div class="api-item"><code>GET /api/batch/{id}/orders</code> — 获取批次订单</div>
+                <div class="api-item"><code>GET /api/orders/{id}</code> — 获取单个订单</div>
+                <div class="api-item"><code>PUT /api/orders/{id}/status</code> — 更新订单状态 <code>{"status": "active"}</code></div>
+                <div class="api-item"><code>PUT /api/orders/{id}/address</code> — 更新地址 <code>{"address": "..."}</code></div>
+                <div class="api-item"><code>PUT /api/events/{id}/done</code> — 标记事件已处理</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

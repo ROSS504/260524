@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批次 {{ batch_id }} - Farm Order Hub</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f0f2f5; color: #333; }
+
+        .header {
+            background: linear-gradient(135deg, #2d5016, #4a8c1c);
+            color: white; padding: 20px 40px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h1 { font-size: 22px; font-weight: 600; }
+        .header a { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 14px; }
+        .header a:hover { color: white; }
+
+        .container { max-width: 1100px; margin: 24px auto; padding: 0 20px; }
+
+        .flash { padding: 12px 18px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+        .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .flash.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+
+        .card {
+            background: white; border-radius: 12px; padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;
+        }
+        .card h2 { font-size: 16px; margin-bottom: 16px; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
+        .card h2 .badge {
+            font-size: 12px; padding: 2px 10px; border-radius: 12px; font-weight: 500;
+        }
+        .badge-green { background: #e8f5e9; color: #2e7d32; }
+        .badge-orange { background: #fff3e0; color: #e65100; }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 10px 20px; border-radius: 8px; font-size: 14px;
+            text-decoration: none; border: none; cursor: pointer; font-weight: 500;
+            transition: all 0.15s;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+        .btn-primary { background: #4a8c1c; color: white; }
+        .btn-blue { background: #1976d2; color: white; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background: #fafafa; font-weight: 600; text-align: left; padding: 10px 12px; border-bottom: 2px solid #eee; }
+        td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+        tr:hover td { background: #fafbfc; }
+
+        .status { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+        .status-new { background: #e3f2fd; color: #1565c0; }
+        .status-active { background: #e8f5e9; color: #2e7d32; }
+        .status-interrupted { background: #fff3e0; color: #e65100; }
+        .status-cancelled { background: #fce4ec; color: #c62828; }
+        .status-completed { background: #e0f2f1; color: #00695c; }
+
+        .processed-yes { color: #2e7d32; }
+        .processed-no { color: #e65100; font-weight: 600; }
+
+        .empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+        .payload { font-size: 12px; color: #777; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>批次: {{ batch_id }}</h1>
+        <a href="/">&larr; 返回首页</a>
+    </div>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endwith %}
+
+        <!-- 操作 -->
+        <div class="card" style="display: flex; gap: 12px; align-items: center;">
+            {% if unprocessed_count > 0 %}
+            <form action="/process/{{ batch_id }}" method="post" style="display:inline;">
+                <button type="submit" class="btn btn-primary">处理本批次 ({{ unprocessed_count }} 条待处理)</button>
+            </form>
+            {% endif %}
+            {% if orders %}
+            <a href="/export/{{ batch_id }}" class="btn btn-blue">导出发货单</a>
+            {% endif %}
+        </div>
+
+        <!-- 订单 -->
+        <div class="card">
+            <h2>
+                订单列表
+                <span class="badge badge-green">{{ orders | length }} 条</span>
+            </h2>
+            {% if orders %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>订单号</th>
+                        <th>客户</th>
+                        <th>电话</th>
+                        <th>地址</th>
+                        <th>商品</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td><strong>{{ order.order_id }}</strong></td>
+                        <td>{{ order.customer_name }}</td>
+                        <td>{{ order.phone }}</td>
+                        <td>{{ order.address }}</td>
+                        <td>{{ order.items | format_items }}</td>
+                        <td><span class="status status-{{ order.status.value }}">{{ status_labels[order.status] }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty">本批次暂无订单</div>
+            {% endif %}
+        </div>
+
+        <!-- 事件流水 -->
+        <div class="card">
+            <h2>
+                事件流水
+                <span class="badge badge-green">{{ events | length }} 条</span>
+                {% if unprocessed_count > 0 %}
+                <span class="badge badge-orange">{{ unprocessed_count }} 条待处理</span>
+                {% endif %}
+            </h2>
+            {% if events %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>订单号</th>
+                        <th>事件类型</th>
+                        <th>数据</th>
+                        <th>状态</th>
+                        <th>时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ev in events %}
+                    <tr>
+                        <td>{{ ev.event_id }}</td>
+                        <td><strong>{{ ev.order_id }}</strong></td>
+                        <td>{{ ev.event_type }}</td>
+                        <td class="payload" title="{{ ev.payload }}">{{ ev.payload }}</td>
+                        <td>
+                            {% if ev.processed %}
+                            <span class="processed-yes">已处理</span>
+                            {% else %}
+                            <span class="processed-no">待处理</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ ev.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty">本批次暂无事件</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
