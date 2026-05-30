@@ -29,7 +29,7 @@ LLM:
     type: openai
     base_url: https://ai.sendercloud.net/v1
     model_name: gemini-3.5-flash
-    api_key: sk-mVbD13MaYslbuS5DNUhKjbdjG18obbBKe341k9ynAjYRtmQt
+    api_key: sk-YOUR_API_KEY
 
 TTS:
   EdgeTTS:
